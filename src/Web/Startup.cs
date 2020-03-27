@@ -1,4 +1,5 @@
 ﻿using Ardalis.ListStartupServices;
+using Coravel;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -24,6 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Mime;
+using Web.Controllers.Api;
 
 namespace Microsoft.eShopWeb.Web
 {
@@ -83,12 +85,16 @@ namespace Microsoft.eShopWeb.Web
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddQueue();
+            services.AddEvents();
+
             ConfigureCookieSettings(services);
 
             CreateIdentityIfNotCreated(services);
 
             services.AddMediatR(typeof(BasketViewModelService).Assembly);
 
+            services.AddTransient<SendVerificationEmail>();
             services.AddScoped(typeof(IAsyncRepository<>), typeof(EfRepository<>));
             services.AddScoped<ICatalogViewModelService, CachedCatalogViewModelService>();
             services.AddScoped<IBasketService, BasketService>();
@@ -237,6 +243,11 @@ namespace Microsoft.eShopWeb.Web
                 endpoints.MapHealthChecks("home_page_health_check");
                 endpoints.MapHealthChecks("api_health_check");
             });
+
+            var events = app.ApplicationServices.ConfigureEvents();
+
+            events.Register<UserVerified>()
+                .Subscribe<SendVerificationEmail>();
         }
     }
 }
